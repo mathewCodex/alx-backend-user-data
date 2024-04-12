@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-"""A mod for filtering logs
+"""A module for filtering logs.
 """
-
 import os
 import re
 import logging
@@ -12,20 +11,21 @@ from typing import List
 patterns = {
     'extract': lambda x, y: r'(?P<field>{})=[^{}]*'.format('|'.join(x), y),
     'replace': lambda x: r'\g<field>={}'.format(x),
-    }
-    PII_FIELDS = ("name", "email", "phone", "ssn", "password")
+}
+PII_FIELDS = ("name", "email", "phone", "ssn", "password")
 
 
 def filter_datum(
         fields: List[str], redaction: str, message: str, separator: str,
         ) -> str:
-    """filters a log line
+    """Filters a log line.
     """
     extract, replace = (patterns["extract"], patterns["replace"])
     return re.sub(extract(fields, separator), replace(redaction), message)
 
+
 def get_logger() -> logging.Logger:
-    """Create a new logger for user data
+    """Creates a new logger for user data.
     """
     logger = logging.getLogger("user_data")
     stream_handler = logging.StreamHandler()
@@ -35,8 +35,9 @@ def get_logger() -> logging.Logger:
     logger.addHandler(stream_handler)
     return logger
 
+
 def get_db() -> mysql.connector.connection.MySQLConnection:
-    """Create a connector to a db
+    """Creates a connector to a database.
     """
     db_host = os.getenv("PERSONAL_DATA_DB_HOST", "localhost")
     db_name = os.getenv("PERSONAL_DATA_DB_NAME", "")
@@ -51,11 +52,12 @@ def get_db() -> mysql.connector.connection.MySQLConnection:
     )
     return connection
 
+
 def main():
-    """Logs the info about user rec in a table.
+    """Logs the information about user records in a table.
     """
     fields = "name,email,phone,ssn,password,ip,last_login,user_agent"
-    columns = fields.split(",")
+    columns = fields.split(',')
     query = "SELECT {} FROM users;".format(fields)
     info_logger = get_logger()
     connection = get_db()
@@ -74,7 +76,7 @@ def main():
 
 
 class RedactingFormatter(logging.Formatter):
-    """Redacting formatter class
+    """ Redacting Formatter class
     """
 
     REDACTION = "***"
@@ -82,17 +84,17 @@ class RedactingFormatter(logging.Formatter):
     FORMAT_FIELDS = ('name', 'levelname', 'asctime', 'message')
     SEPARATOR = ";"
 
-
     def __init__(self, fields: List[str]):
         super(RedactingFormatter, self).__init__(self.FORMAT)
         self.fields = fields
 
     def format(self, record: logging.LogRecord) -> str:
-        """format a LogRecord
+        """formats a LogRecord.
         """
         msg = super(RedactingFormatter, self).format(record)
         txt = filter_datum(self.fields, self.REDACTION, msg, self.SEPARATOR)
         return txt
+
 
 if __name__ == "__main__":
     main()
